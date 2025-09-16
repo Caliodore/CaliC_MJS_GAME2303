@@ -5,6 +5,7 @@ TagManager:
   serializedVersion: 3
   tags:
   - Wall
+  - Guard Hearing Radius
   layers:
   - Default
   - TransparentFX

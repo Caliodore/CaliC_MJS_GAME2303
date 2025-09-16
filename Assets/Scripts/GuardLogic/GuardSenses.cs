@@ -2,15 +2,17 @@ using System;
 using System.Collections;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Events;
 
 public class GuardSenses : MonoBehaviour
 {
     [SerializeField] Rigidbody playerRB;
-    [SerializeField] Rigidbody guardRB;
     [SerializeField] LayerMask obscuringLayers;
     [SerializeField] Collider guardHearing;
 
-    enum GuardStates
+    GuardMovement attachedMoveScript;
+
+    public enum GuardStates
     { 
         Idle = 0,
         Patrolling = 1,
@@ -18,12 +20,13 @@ public class GuardSenses : MonoBehaviour
         Pursuit = 3
     }
 
-    private GuardStates currentGuardState;
+    public GuardStates currentGuardState;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-        currentGuardState = GuardStates.Idle;
+        currentGuardState = GuardStates.Patrolling;
+        attachedMoveScript = gameObject.GetComponent<GuardMovement>();
     }
 
     // Update is called once per frame
@@ -32,13 +35,46 @@ public class GuardSenses : MonoBehaviour
         
     }
 
-    private void StateUpdater()
-    { 
-        
+    private void StateUpdater(string inputState)
+    {
+        switch (inputState) 
+        {
+            case "Patrolling":
+            { 
+                currentGuardState = GuardStates.Patrolling;
+                break;
+            }
+            case "Investigating":
+            {
+                currentGuardState = GuardStates.Investigating;
+                break;
+            }
+            case "Pursuit":
+            { 
+                currentGuardState = GuardStates.Pursuit;
+                break;
+            }
+        }
+        Debug.Log($"Guard is now set to: {currentGuardState}");
     }
 
-    public void OnHeard()
-    { 
-        
+    public void OnHeard(Vector3 lastHeardLocation, bool guardHearingPlayer)
+    {
+        Vector3 suspectedPosition = lastHeardLocation;
+
+        StateUpdater("Investigating");
+        attachedMoveScript.PatrolUpdate(currentGuardState);
+
+        if(guardHearingPlayer)
+        {
+            Debug.LogWarning("I HEAR YOU LITTLE ONE");
+            attachedMoveScript.isCurrentlyHearingPlayer = false;
+        }
+        else if(!guardHearingPlayer)
+        {
+            Debug.LogWarning("I dont HEAR YOU LITTLE ONE");
+            attachedMoveScript.isCurrentlyHearingPlayer = true;
+        }
     }
+
 }

@@ -1,4 +1,5 @@
 using System.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.InputSystem;
 using UnityEngine.InputSystem.Interactions;
@@ -16,9 +17,12 @@ public class PlayerMovement : MonoBehaviour
     public bool isMoving;
     public bool playerTracking;
     public float currentPlayerSpeed;
+    public bool inHearingRange;
 
     [SerializeField] Rigidbody playerRB;
     [SerializeField] GameObject pathMarkerPrefab;
+
+    Coroutine coRef;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -68,18 +72,18 @@ public class PlayerMovement : MonoBehaviour
         {
             outputMovementVectorScaled = (outputMovementVector * currentPlayerSpeed * Time.deltaTime);
             transform.Translate(outputMovementVectorScaled);
-        }        
+        }
     }
 
     public void PathMaker(InputAction.CallbackContext ctx)
     {
         if (ctx.performed) 
         { 
-            StartCoroutine(PathSpawner());
+            coRef = StartCoroutine(PathSpawner());
         }
         if ((ctx.interaction is HoldInteraction))
         {
-            StopAllCoroutines();   
+            StopCoroutine(coRef);   
         }
     }
 
@@ -91,6 +95,4 @@ public class PlayerMovement : MonoBehaviour
             yield return new WaitForSeconds(1f);
         }    
     }
-
-
 }
