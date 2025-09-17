@@ -45,13 +45,18 @@ public class GuardNavigation : MonoBehaviour
     // Update is called once per frame
     void Update()
     {
+        
+    }
+
+    private void FixedUpdate()
+    {
         navDestination = new Vector3(guardNavAgent.destination.x, transform.position.y, guardNavAgent.destination.z);
         distanceToTarget = Vector3.Distance(transform.position, navDestination);
 
         if (distanceToTarget <= 1)
         { 
             withinRange = true;
-            
+            travellingToPoint = false;
         }
         else if (distanceToTarget > 1)
         { 
@@ -88,6 +93,9 @@ public class GuardNavigation : MonoBehaviour
 
         Vector3 translatedPosition = PositionTranslator(inputIndex);
         guardNavAgent.SetDestination(translatedPosition);
+        
+        if(waitingCoroutine != null)
+            StopCoroutine(waitingCoroutine);
 
         CoroutineStateUpdater();
    
@@ -95,8 +103,8 @@ public class GuardNavigation : MonoBehaviour
     }
 
     public void CoroutineStateUpdater()
-    { 
-        if(waitingCoroutine == null && !isAlerted)
+    {
+        if(!isAlerted)
         { 
             waitingCoroutine = StartCoroutine(WaitingOnArrival());
         }
@@ -115,40 +123,51 @@ public class GuardNavigation : MonoBehaviour
 
     public void PlayerLost()
     { 
-        playerActiveInRadius = false;    
+        playerActiveInRadius = false;
+        Debug.Log("Player left hearing radius.");
     }
 
 
     IEnumerator TrackingPlayer()
     {
+        Debug.LogWarning("PLAYER IS BEING TRACKED");
+        trackingPlayer = false;
+        //isAlerted = true;
         StopCoroutine(waitingCoroutine);
         elapsedTime = 0f;
+        yield return new WaitForSeconds(1f);
         while(isAlerted)
         {
             while(playerActiveInRadius)
             {
-                isAlerted = true;
+                //isAlerted = true;
                 playerLastHeardPosition = playerObject.GetComponentInChildren<Rigidbody>().transform.position;
                 MovementUpdate(playerIndexFlag);
                 elapsedTime = 0f;
-                yield return new WaitForSeconds(1f);
+                yield return null;
             }
             while(withinRange && !playerActiveInRadius)
             {
+                Debug.Log("At location, waiting.");
                 travellingToPoint = false;
                 elapsedTime += Time.deltaTime;
                 if(elapsedTime >= searchingDuration)
-                { 
+                {
+                    Debug.Log("Elapsed searching duration.");
+                    trackingPlayer = false;
                     isAlerted = false;
                     MovementUpdate(patrolCurrentIndex);
+                    StopCoroutine(trackingCoroutine);
                 }
-                yield return new WaitForSeconds(1f);
+                yield return null;
             }
+            yield return null;
         }
     }
 
     IEnumerator WaitingOnArrival()
-    { 
+    {
+        elapsedTime = 0f;
         Debug.Log("Coroutine started");
         waitingBoolTrigger = true;
         while(waitingBoolTrigger)
@@ -157,11 +176,21 @@ public class GuardNavigation : MonoBehaviour
             {
                 travellingToPoint = false;
                 Debug.Log("Coroutine realized object was in range");
-                patrolCurrentIndex++;
-                MovementUpdate(patrolCurrentIndex);
-                yield return new WaitForSecondsRealtime(2.0f);
+                while(withinRange && (elapsedTime < searchingDuration))
+                {
+                    elapsedTime += Time.deltaTime;
+                    if(elapsedTime >= searchingDuration)
+                    {
+                        Debug.Log("Finished waiting.");
+                        waitingBoolTrigger = false;
+                        patrolCurrentIndex++;
+                        MovementUpdate(patrolCurrentIndex);
+                    }
+                    yield return null;
+                }
             }
-            yield return new WaitForSecondsRealtime(0.5f);
+            yield return null;
         }
+        yield return null;
     }
 }

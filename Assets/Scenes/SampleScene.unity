@@ -207,7 +207,7 @@ Transform:
   m_GameObject: {fileID: 330585543}
   serializedVersion: 2
   m_LocalRotation: {x: 0.6137665, y: 0, z: 0, w: 0.7894876}
-  m_LocalPosition: {x: -44.919773, y: 20.322817, z: 22.354458}
+  m_LocalPosition: {x: -32.709774, y: 28.769054, z: 19.705414}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -718,7 +718,7 @@ Transform:
   m_GameObject: {fileID: 877164720}
   serializedVersion: 2
   m_LocalRotation: {x: 0.6137665, y: 0, z: 0, w: 0.7894876}
-  m_LocalPosition: {x: -44.919773, y: 18.218782, z: 22.889805}
+  m_LocalPosition: {x: -32.709774, y: 18.218782, z: 22.389805}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1071,7 +1071,6 @@ MonoBehaviour:
           m_StringArgument: 
           m_BoolArgument: 0
         m_CallState: 2
-  currentlyHearingPlayerCollision: 0
   currentlyHearingPlayerTrigger: 0
 --- !u!1 &1198357966
 GameObject:
@@ -1119,7 +1118,7 @@ Transform:
   m_GameObject: {fileID: 1198357966}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -44.919773, y: 1.3187828, z: 27.189804}
+  m_LocalPosition: {x: -32.709774, y: 1.3187828, z: 26.689804}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children: []
@@ -1216,6 +1215,7 @@ MonoBehaviour:
   patrolCurrentIndex: 0
   distanceToTarget: 0
   searchingDuration: 0
+  elapsedTime: 0
   playerLastHeardPosition: {x: 0, y: 0, z: 0}
   navDestination: {x: 0, y: 0, z: 0}
   destinationTransform: {x: 0, y: 0, z: 0}
@@ -1405,7 +1405,7 @@ Transform:
   m_GameObject: {fileID: 1537632727}
   serializedVersion: 2
   m_LocalRotation: {x: 0, y: 0, z: 0, w: 1}
-  m_LocalPosition: {x: -62.69, y: -6.7, z: 28.86}
+  m_LocalPosition: {x: -50.48, y: -6.7, z: 28.36}
   m_LocalScale: {x: 1, y: 1, z: 1}
   m_ConstrainProportionsScale: 0
   m_Children:

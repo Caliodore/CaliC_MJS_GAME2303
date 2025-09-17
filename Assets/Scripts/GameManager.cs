@@ -36,12 +36,12 @@ public class GameManager : MonoBehaviour
         if(guardHearingPlayer == true)
         {
             Debug.Log("Run OnHeard with true");
-            alertedGuard.GetComponent<GuardSenses>().OnHeard(playerCurrentPosition, guardHearingPlayer);
+            //alertedGuard.GetComponent<GuardSenses>().OnHeard(playerCurrentPosition, guardHearingPlayer);
         }
         else
         { 
             Debug.Log("Run OnHeard with false");
-            alertedGuard.GetComponent<GuardSenses>().OnHeard(playerLastKnownLocation, guardHearingPlayer);        
+            //alertedGuard.GetComponent<GuardSenses>().OnHeard(playerLastKnownLocation, guardHearingPlayer);        
         }
     }
 
