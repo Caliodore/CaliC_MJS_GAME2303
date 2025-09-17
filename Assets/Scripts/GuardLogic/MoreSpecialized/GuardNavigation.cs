@@ -131,7 +131,7 @@ public class GuardNavigation : MonoBehaviour
                 playerLastHeardPosition = playerObject.GetComponentInChildren<Rigidbody>().transform.position;
                 MovementUpdate(playerIndexFlag);
                 elapsedTime = 0f;
-                yield return new WaitForEndOfFrame();
+                yield return new WaitForSeconds(1f);
             }
             while(withinRange && !playerActiveInRadius)
             {
@@ -142,7 +142,7 @@ public class GuardNavigation : MonoBehaviour
                     isAlerted = false;
                     MovementUpdate(patrolCurrentIndex);
                 }
-                yield return new WaitForEndOfFrame();
+                yield return new WaitForSeconds(1f);
             }
         }
     }
