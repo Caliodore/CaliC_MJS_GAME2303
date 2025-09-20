@@ -1,12 +1,14 @@
 using System;
 using System.Collections;
 using UnityEngine;
+using UnityEngine.AI;
 
 public class GuardBrain_3 : MonoBehaviour
 {
     [SerializeField] GameObject attachedGuardObject;
     [SerializeField] GameObject guardOverseer;
     [SerializeField] GameObject playerParentObj;
+    [SerializeField] NavMeshAgent guardMoveAgent;
 
     [Header("Non-Player Trackers")]
     public bool isCurrentlyPatrolling, isCurrentlyWaiting;
@@ -18,21 +20,25 @@ public class GuardBrain_3 : MonoBehaviour
     public bool playerCurrentlyInHearingRadius, travellingToPlayerLastKnown, searchingAtLastKnown, isReturningToPatrol;
     public int playerIndexFlag;
     public float timeToSearchForPlayer, audioReactionTime;
+    public LayerMask visionRaycastCollisionMask;
 
     [Header("Pursuing Player Trackers")]
     public bool isSeeingPlayer, isPursuingPlayer, visionBlocked, playerInVisualRange;
-    public float visualRange, visualReactionTime, timeSinceLastSeen, distanceToPlayer;
+    public float visualRange, visualReactionTime, timeSinceLastSeen, distanceToPlayer, playerPosition;
 
     [Header("Vars for Changes")]
-    public bool stateChanged;
+    public bool stateChanged, playerInRangeGeneral, doneInitializing;
     public GuardState currentGuardState, desiredState;
 
     //Vars for internal references
+    private Collider hearingRadiusRef;
+    private GuardBrain_3 attachedBrainRef;
     private GuardPresetValues guardPresets;
     private GuardMovement3 AS_Move;
     private GuardVision_3 AS_Vision;
     private GuardHearing_3 AS_Hearing;
     private GuardStateChange_3 AS_StateChange;
+    private GuardPlayerTrackerCoRo attachedCoRo;
         //Coroutines
         private Coroutine reactionCoRo;
 
@@ -40,7 +46,7 @@ public class GuardBrain_3 : MonoBehaviour
 
     void Start()
     {
-        InitializePresetsAndComponents();
+        StartCoroutine(EstablishInternalReferences());
     }
 
     void Update()
@@ -61,14 +67,70 @@ public class GuardBrain_3 : MonoBehaviour
     /// </summary>
     private void InitializePresetsAndComponents()
     {
-        guardPresets = guardOverseer.GetComponent<GuardPresetValues>();
-        AssignPresetValues();
+        attachedGuardObject = GetComponent<GuardBrain_3>().gameObject;
+        attachedCoRo = this.gameObject.GetComponentInChildren<GuardPlayerTrackerCoRo>();
+        attachedBrainRef = attachedGuardObject.GetComponent<GuardBrain_3>();
+        hearingRadiusRef = attachedGuardObject.GetComponentInChildren<GuardHearing_3>().gameObject.GetComponent<Collider>();
+        visionRaycastCollisionMask = LayerMask.GetMask("Player","Wall","LoS Blocker");
+        guardMoveAgent = attachedGuardObject.GetComponent<NavMeshAgent>();
+        guardOverseer = FindAnyObjectByType<GuardOverseer>().gameObject;
+        playerParentObj = FindAnyObjectByType<PlayerMovement>().gameObject;
+
+        guardPresets = guardOverseer.GetComponent<GuardOverseer>().AssignGuardSO();
+
         //Making sure it's referencing the individual parent object of all aspects of the guard prefab for getting various components.
-        AS_Move = attachedGuardObject.GetComponent<GuardMovement3>();
-        AS_Hearing = attachedGuardObject.GetComponent<GuardHearing_3>();
-        AS_Vision = attachedGuardObject.GetComponent<GuardVision_3>();
-        AS_StateChange = attachedGuardObject.GetComponent<GuardStateChange_3>();
+        AS_Move = attachedGuardObject.GetComponentInChildren<GuardMovement3>();
+        AS_Hearing = attachedGuardObject.GetComponentInChildren<GuardHearing_3>();
+        AS_Vision = attachedGuardObject.GetComponentInChildren<GuardVision_3>();
+        AS_StateChange = attachedGuardObject.GetComponentInChildren<GuardStateChange_3>();
+
+        //Debug.Log("Finished establishing internal references.");
+    }
+
+    IEnumerator EstablishInternalReferences()
+    {
+        //Debug.Log("Establishing Internal References");
+        InitializePresetsAndComponents();
+        yield return StartCoroutine(InitializingCoroutine());
+        doneInitializing = true;
+        yield break;
+    }
+
+    IEnumerator InitializingCoroutine()
+    {
+        //Debug.Log("Establishing secondary script preset values.");
+        yield return StartCoroutine(EstablishPresetValues());
+        //Debug.Log("Establishing secondary script references.");
+        yield return StartCoroutine(EstablishSecondReferences());
         AssignScriptPresets();
+        Debug.Log("All coroutines finished.");
+        yield return null;    
+    }
+
+    IEnumerator EstablishSecondReferences()
+    {
+        AssignReferences();
+        //Debug.Log("Last coroutine finished.");
+        yield return null;
+    }
+
+    IEnumerator EstablishPresetValues()
+    { 
+        AssignPresetValues();
+        //Debug.Log("Second coroutine finished.");
+        yield return null;
+    }
+
+    /// <summary>
+    /// Assigns the most necessary references for the other scripts to guarantee uniformity across all instances of this prefab.
+    /// </summary>
+    private void AssignReferences()
+    { 
+        AS_Move.AssignMoveRefs(attachedGuardObject, playerParentObj, guardMoveAgent, attachedBrainRef, attachedCoRo);
+        AS_Hearing.AssignHearingRefs(attachedGuardObject, playerParentObj, hearingRadiusRef, attachedBrainRef);
+        AS_Vision.AssignVisionRefs(attachedGuardObject, guardOverseer, playerParentObj, visionRaycastCollisionMask, attachedBrainRef);
+        AS_StateChange.AssignStateRefs(attachedGuardObject, attachedBrainRef);
+        //Debug.Log("Finished assigning component references.");
     }
 
     /// <summary>
@@ -107,6 +169,7 @@ public class GuardBrain_3 : MonoBehaviour
         isPursuingPlayer = false;
         visionBlocked = false;
         playerInVisualRange = false;
+        //Debug.Log("Finished internalizing preset values.");
     }
 
     /// <summary>
@@ -119,7 +182,8 @@ public class GuardBrain_3 : MonoBehaviour
         AS_Move.InitializeMoveValues(moveSpeed, timeToSearchForPlayer, patrolPauseDuration);
         AS_Vision.InitializeVisionValues(visualRange, visualReactionTime);
         AS_Hearing.InitializeHearingValues(audioReactionTime);
-        AS_StateChange.InitializeStateValues(currentGuardState);
+        AS_StateChange.InitializeStateValues(currentGuardState, patrolPauseDuration);
+        //Debug.Log("Established secondary script presets.");
     }
 
     /// <summary>
@@ -134,30 +198,30 @@ public class GuardBrain_3 : MonoBehaviour
     }
 
     /// <summary>
-    /// Method called by non-StateChange scripts to check with Brain if it is time to swap states.
+    /// Method called by non-StateChange scripts to communicate to Brain to change state through StateChange script.
     /// </summary>
-    public void OnRequestStateUpdate()
+    /// <param name="requestedStateChange"></param>
+    public void OnRequestStateUpdate(GuardState requestedStateChange)
     { 
-        
+        Debug.Log($"Requesting StateChange to swap to: {requestedStateChange}.");
+        AS_StateChange.ChangeState(requestedStateChange);
+    }
+
+    public void PlayerInRange()
+    { 
+        playerInRangeGeneral = true;
     }
 
     public void OnPlayerEntersAudioRange()  //Should be activated when player collides/is colliding with the hearing radius trigger, but not when actively being seen by the guard.
     {
-        reactionCoRo = StartCoroutine(GuardReactsToPlayer(audioReactionTime, GuardState.Investigating));
+        if(playerInRangeGeneral)
+            reactionCoRo = StartCoroutine(GuardReactsToPlayer(audioReactionTime, GuardState.Investigating));
     }
 
     public void OnPlayerEntersVisualRange() //Should overwrite the audio range alert functions and investigating state if player can be seen.
-    { 
-        reactionCoRo = StartCoroutine(GuardReactsToPlayer(visualReactionTime, GuardState.Pursuing));
-    }
-
-    IEnumerator GuardReactsToPlayer(float reactionType, GuardState stateToChangeTo)
     {
-        Debug.Log("GuardBrain begins reaction.");
-        yield return new WaitForSeconds(reactionType);
-        Debug.Log($"GuardBrain tells StateChange to change to: {stateToChangeTo}");
-        AS_StateChange.ChangeState(stateToChangeTo);
-        StopCoroutine(reactionCoRo);
+        if(playerInRangeGeneral)
+            reactionCoRo = StartCoroutine(GuardReactsToPlayer(visualReactionTime, GuardState.Pursuing));
     }
 
     private void ChangeScriptStates(GuardState changingState)
@@ -165,5 +229,15 @@ public class GuardBrain_3 : MonoBehaviour
         AS_Hearing.HearingChangeState(changingState);
         AS_Move.MovementChangeState(changingState);
         AS_Vision.VisionChangeState(changingState);
+    }
+
+    IEnumerator GuardReactsToPlayer(float reactionType, GuardState stateToChangeTo)
+    {
+        Debug.Log("GuardBrain begins reaction.");
+        yield return new WaitForSeconds(reactionType);
+        //Need to add a call to vision raycast function here before submitting StateChange.
+        Debug.Log($"GuardBrain tells StateChange to change to: {stateToChangeTo}");
+        AS_StateChange.ChangeState(stateToChangeTo);
+        yield break;
     }
 }

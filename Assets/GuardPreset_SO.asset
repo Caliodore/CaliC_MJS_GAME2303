@@ -12,8 +12,10 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: 25503ccddd4b2aa4c960a97612159d35, type: 3}
   m_Name: GuardPreset_SO
   m_EditorClassIdentifier: 
-  visionRange: 6
+  visionRange: 10
   movementSpeed: 4
   searchingDuration: 5
-  reactionTime: 0.4
   patrolPauseDuration: 2
+  visualReactionTime: 0
+  audioReactionTime: 0
+  guardStateDefault: 0

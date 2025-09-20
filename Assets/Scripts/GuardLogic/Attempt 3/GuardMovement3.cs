@@ -7,32 +7,50 @@ using UnityEngine.AI;
 public class GuardMovement3 : MonoBehaviour
 {
     [Header("Component References")]
-    [SerializeField] Rigidbody guardRigidbody;
     [SerializeField] Transform patrolMarkerPrefab;
     [SerializeField] Transform[] patrolPoints;
-    [SerializeField] NavMeshAgent guardNavAgent;
+    GameObject guardObj, playerObj;
+    NavMeshAgent guardNavAgent;
+    GuardBrain_3 attachedBrain;
+    GuardPlayerTrackerCoRo attachedCoRoScript;
 
     [Header("Movement Values")]
-    public float moveSpeed, searchingDuration, patrolPauseDuration;
+    public float moveSpeed, searchingDuration, guardToTargetDist, patrolPauseDuration;
+    public int currentPatrolIndex;
+    public Vector3 currentPatrolTarget, lastKnownPlayerPos, currentPlayerPos, currentGuardPos, currentTargetVector;
 
     [Header("Bools")]
-    public bool withinRange, travellingToDestination, updatingPlayerLastKnown;
+    public bool withinRange, travellingToDestination, updatingPlayerLastKnown, doneInitializing = false;
 
     public GuardState activeGuardState;
     public GuardState previousGuardState;
+    private float visualReactTime, audioReactTime, reactionTime, elapsedTravelTime;
     private int activeStateInt;
     private int previousStateInt;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
-
+        currentPatrolIndex = 0;
     }
 
     // Update is called once per frame
-    void Update()
+    void FixedUpdate()
     {
-        
+        if(doneInitializing)
+        { 
+            currentTargetVector = new Vector3(guardNavAgent.destination.x, 0, guardNavAgent.destination.z);
+            currentGuardPos = new Vector3(guardObj.transform.position.x, 0, guardObj.transform.position.z);
+            guardToTargetDist = Mathf.Abs(Vector3.Distance(currentGuardPos, currentTargetVector));
+            if(guardToTargetDist < 1)
+            { 
+                withinRange = true;    
+            }
+            else
+            { 
+                withinRange = false;    
+            }
+        }
     }
 
     public void InitializeMoveValues(float ms, float sd, float ppd)
@@ -40,27 +58,108 @@ public class GuardMovement3 : MonoBehaviour
         moveSpeed = ms;
         searchingDuration = sd;
         patrolPauseDuration = ppd;
+        doneInitializing = true;
+    }
+
+    public void AssignMoveRefs(GameObject guardObjRef, GameObject playerObjRef, NavMeshAgent guardNavAgentRef, GuardBrain_3 attachedBrainRef, GuardPlayerTrackerCoRo attachedCoRo)
+    { 
+        guardObj = guardObjRef;
+        playerObj = playerObjRef;
+        guardNavAgent = guardNavAgentRef;
+        attachedBrain = attachedBrainRef;
+        attachedCoRoScript = attachedCoRo;
+
+        visualReactTime = attachedBrain.visualReactionTime;
+        audioReactTime = attachedBrain.audioReactionTime;
+        currentTargetVector = guardNavAgent.destination;
+        currentGuardPos = guardObj.transform.position;
+        guardToTargetDist = Mathf.Abs(Vector3.Distance(currentGuardPos, currentTargetVector));
     }
 
     public void MovementChangeState(GuardState changingState)
     {
-        if(activeGuardState != changingState)
+        currentPatrolTarget = patrolPoints[currentPatrolIndex].transform.position;
+        switch(changingState)
         { 
-            previousGuardState = activeGuardState;
-            //StateChangedLogicHandler(changingState);
+            case GuardState.ResumePatrol:
+                TargetUpdate(currentPatrolTarget);
+                break; 
+ 
+            case GuardState.ActivePatrol:
+                currentPatrolIndex++;
+                currentPatrolIndex = currentPatrolIndex % patrolPoints.Length;
+                TargetUpdate(currentPatrolTarget);
+                break;
+
+            case GuardState.Waiting:
+                //Nothing. StateChange or Brain should handle the waiting timer.
+                break; 
+
+            case GuardState.Investigating:
+            case GuardState.Pursuing:
+                StartCoroutine(PlayerTargetUpdates());
+                break;
+    
         }
     }
     
-    IEnumerator WaitingOnArrival()
+    public void TargetUpdate(Vector3 destination)
     { 
-        yield return null;    
+        guardNavAgent.SetDestination(destination);
+        if(!travellingToDestination)
+            StartCoroutine(HeadingToDestination());
     }
-    IEnumerator CheckIfArrived()
+
+    IEnumerator PlayerTargetUpdates()
     {
-        while(withinRange)
+        while(activeGuardState == GuardState.Investigating)
         { 
-                
+            lastKnownPlayerPos = attachedCoRoScript.SendPlayerPosition();
+            TargetUpdate(lastKnownPlayerPos);
+            yield return new WaitForSeconds(audioReactTime);
+        }
+        while(activeGuardState == GuardState.Pursuing)
+        { 
+            lastKnownPlayerPos = attachedCoRoScript.SendPlayerPosition();
+            TargetUpdate(lastKnownPlayerPos);
+            yield return new WaitForSeconds(visualReactTime);
         }
         yield return null;    
+    }
+
+    IEnumerator HeadingToDestination()
+    {
+        elapsedTravelTime = 0;
+        while(guardToTargetDist > 1)
+        { 
+            travellingToDestination = true;
+            elapsedTravelTime += Time.deltaTime;
+            yield return null;
+        }
+        if(guardToTargetDist <= 1)
+        {
+            travellingToDestination = false;
+            if((int)activeGuardState < 2)
+                ArrivalLogic();
+        }
+        yield return null;
+    }
+
+    private void ArrivalLogic()
+    { 
+        switch(activeGuardState)
+        { 
+            case(GuardState.ResumePatrol):
+            case(GuardState.ActivePatrol):
+                Debug.Log($"MovementLogic requests Brain to change to Waiting.");
+                attachedBrain.OnRequestStateUpdate(GuardState.Waiting);
+                break;
+
+            case(GuardState.Waiting):
+            case(GuardState.Investigating):
+            case(GuardState.Pursuing):
+                Debug.Log("Oops! Unintended consequence!");
+                break;
+        }
     }
 }

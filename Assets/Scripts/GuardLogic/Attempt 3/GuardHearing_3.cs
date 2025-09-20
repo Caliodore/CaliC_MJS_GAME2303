@@ -3,12 +3,12 @@ using UnityEngine;
 public class GuardHearing_3 : MonoBehaviour
 {   
     [Header("Component References")]
-    [SerializeField] Rigidbody guardRB;
+    [SerializeField] GameObject guardObj;
     [SerializeField] GuardBrain_3 attachedBrain;
-    [SerializeField] GameObject playerRB;
+    [SerializeField] GameObject playerObj;
     [SerializeField] Collider guardHearingRadius;
-    [SerializeField] LayerMask visionInteractionLayers;
 
+    private bool doneInitializing;
     private float audioReactionTime;
     private GuardState activeGuardState;
 
@@ -35,6 +35,15 @@ public class GuardHearing_3 : MonoBehaviour
     public void InitializeHearingValues(float art)
     { 
         audioReactionTime = art;
+        doneInitializing = true;
+    }
+
+    public void AssignHearingRefs(GameObject guardObjRef, GameObject playerObjRef, Collider hearingRadiusRef, GuardBrain_3 attachedBrainRef)
+    { 
+        guardObj = guardObjRef;
+        playerObj = playerObjRef;
+        guardHearingRadius = hearingRadiusRef;
+        attachedBrain = attachedBrainRef;
     }
 
     public void HearingChangeState(GuardState changingState)
