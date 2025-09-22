@@ -78,7 +78,7 @@ public class GuardStateChange_3 : MonoBehaviour
                         Debug.Log("The new state is Pursuing, overwriting Investigating.");
                         activeGuardState = stateChangingTo;
                         Debug.Log($"Changing A -> R: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        SendChangeRequestBrain();
+                        //SendChangeRequestBrain();
                     }
                     else
                         Debug.Log("This line shouldn't be accessible. Investigating cannot overwrite Investigating.");
@@ -95,7 +95,7 @@ public class GuardStateChange_3 : MonoBehaviour
                         Debug.Log($"The new state is Pursuing, overwriting {previousGuardState}.");
                         activeGuardState = stateChangingTo;
                         Debug.Log($"Changing A -> R: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        SendChangeRequestBrain();
+                        //SendChangeRequestBrain();
                     }
                     else
                     {
@@ -105,57 +105,69 @@ public class GuardStateChange_3 : MonoBehaviour
                         Debug.Log($"The new state is Investigating, overwriting {previousGuardState}.");
                         activeGuardState = stateChangingTo;
                         Debug.Log($"Changing A -> R: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        SendChangeRequestBrain();
+                        //SendChangeRequestBrain();
                     }
                     break;
             }
+            SendChangeRequestBrain();
         }
         else                //----------If stateChangingTo =/= a priority state. So returning to patrol states mainly.
-        { 
+        {
+            Debug.Log($"P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
+            previousGuardState = activeGuardState;
+            previousStateInt = (int)previousGuardState;
+            activeGuardState = stateChangingTo;
+            Debug.Log($"P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
             switch(previousStateInt)  //ChangingTo choices: ResumePatrol, ActivePatrol, Waiting
             {
                 case(4):    //----------To transition from Pursuing/Investigating to the non-priority states it must go through ResumePatrol.
                 case(3):
                     {
-                        Debug.Log($"P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        previousGuardState = activeGuardState;
                         Debug.Log($"Changing P -> A: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
                         Debug.Log($"The new state is Resume Patrol, overwriting {previousGuardState}.");
-                        activeGuardState = stateChangingTo;
+                        activeGuardState = GuardState.ResumePatrol;
                         Debug.Log($"Changing A -> R: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        SendChangeRequestBrain();
+                        //SendChangeRequestBrain();
                     }
                     break;
                 case(2):    //----------Previous state = Waiting, so a timer has finished and guard is on patrol as usual.
                     {
-                        Debug.Log($"P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        previousGuardState = GuardState.Waiting;
+                        //Debug.Log($"P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
+                        //previousGuardState = activeGuardState;
                         Debug.Log($"Changing P -> A: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
                         Debug.Log($"The new state is Active Patrol, overwriting {previousGuardState}.");
-                        activeGuardState = stateChangingTo;
+                        activeGuardState = GuardState.ActivePatrol;
                         Debug.Log($"Changing A -> R: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        SendChangeRequestBrain();
+                        //SendChangeRequestBrain();
                     }    
                     break;
                 case(1):    //----------Previous state = ActivePatrol, which can only transition to Waiting out of the choices.
                 case(0):    //----------Previous state = Resume patrol, which can only transition to Waiting out of the choices.
                     {
-                        Debug.Log($"P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        previousGuardState = activeGuardState;
-                        Debug.Log($"Changing P -> A: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
+                        //Debug.Log($"P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
                         Debug.Log($"The new state is Waiting, overwriting {previousGuardState}.");
-                        activeGuardState = stateChangingTo;
+                        //Debug.Log($"Changing P -> A: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
+                        //previousGuardState = activeGuardState;
                         Debug.Log($"Changing A -> R: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
-                        StartCoroutine(TimerFromWaitingToActivePatrol());
+                        activeGuardState = GuardState.Waiting;
+                        //Debug.Log($"Starting waiting coroutine: \n P: {previousGuardState} | A: {activeGuardState} | R: {stateChangingTo}");
+                        //StartCoroutine(TimerFromWaitingToActivePatrol());
+
                     }
                     break;
             }
+            SendChangeRequestBrain();
         }
     }
 
     private void SendChangeRequestBrain()
     { 
+        //if()
         Debug.Log($"SC tells Brain to change to {activeGuardState}.");
+
+        if(activeGuardState == GuardState.Waiting)
+            StartCoroutine(TimerFromWaitingToActivePatrol());
+
         attachedBrain.OnStateChange(activeGuardState);
     }
 
@@ -164,6 +176,7 @@ public class GuardStateChange_3 : MonoBehaviour
         Debug.Log($"Started waiting {patrolPointDuration} seconds.");
         yield return new WaitForSeconds(patrolPointDuration);
         Debug.Log($"Done waiting {patrolPointDuration} seconds.");
+        //previousGuardState = GuardState.Waiting;
         ChangeState(GuardState.ActivePatrol);
         SendChangeRequestBrain();
         yield break;

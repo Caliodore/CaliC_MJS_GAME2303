@@ -20,7 +20,7 @@ public class GuardMovement3 : MonoBehaviour
     public Vector3 currentPatrolTarget, lastKnownPlayerPos, currentPlayerPos, currentGuardPos, currentTargetVector;
 
     [Header("Bools")]
-    public bool withinRange, travellingToDestination, updatingPlayerLastKnown, doneInitializing = false;
+    public bool withinRange, travellingToDestination, updatingPlayerLastKnown, doneInitializing = false, isWaiting;
 
     public GuardState activeGuardState;
     public GuardState previousGuardState;
@@ -43,11 +43,13 @@ public class GuardMovement3 : MonoBehaviour
             currentGuardPos = new Vector3(guardObj.transform.position.x, 0, guardObj.transform.position.z);
             guardToTargetDist = Mathf.Abs(Vector3.Distance(currentGuardPos, currentTargetVector));
             if(guardToTargetDist < 1)
-            { 
+            {
+                travellingToDestination = false;
                 withinRange = true;    
             }
             else
-            { 
+            {
+                travellingToDestination = true;
                 withinRange = false;    
             }
         }
@@ -82,21 +84,29 @@ public class GuardMovement3 : MonoBehaviour
         switch(changingState)
         { 
             case GuardState.ResumePatrol:
+                isWaiting = false;
                 TargetUpdate(currentPatrolTarget);
                 break; 
  
             case GuardState.ActivePatrol:
+                isWaiting = false;
                 currentPatrolIndex++;
-                currentPatrolIndex = currentPatrolIndex % patrolPoints.Length;
+                Debug.Log($"Current patrol index: {currentPatrolIndex}.");
+                if(currentPatrolIndex >= patrolPoints.Length)
+                    currentPatrolIndex = currentPatrolIndex % patrolPoints.Length;
+                Debug.Log($"Tested if within index, and did remainder operation if so. \n Target Update sent patrol point at index: {currentPatrolIndex}.");
+                currentPatrolTarget = patrolPoints[currentPatrolIndex].transform.position;
                 TargetUpdate(currentPatrolTarget);
                 break;
 
             case GuardState.Waiting:
+                isWaiting = true;
                 //Nothing. StateChange or Brain should handle the waiting timer.
                 break; 
 
             case GuardState.Investigating:
             case GuardState.Pursuing:
+                isWaiting = false;
                 StartCoroutine(PlayerTargetUpdates());
                 break;
     
@@ -130,28 +140,29 @@ public class GuardMovement3 : MonoBehaviour
     IEnumerator HeadingToDestination()
     {
         elapsedTravelTime = 0;
-        while(guardToTargetDist > 1)
+        while(guardToTargetDist > 1f)
         { 
             travellingToDestination = true;
             elapsedTravelTime += Time.deltaTime;
             yield return null;
         }
-        if(guardToTargetDist <= 1)
+        if(guardToTargetDist <= 1f)
         {
             travellingToDestination = false;
-            if((int)activeGuardState < 2)
+            if(((int)activeGuardState < 2) && isWaiting)
                 ArrivalLogic();
         }
         yield return null;
     }
 
     private void ArrivalLogic()
-    { 
+    {
+        Debug.Log($"Arrived at location, asking Brain to change state from {activeGuardState} to Waiting.");
         switch(activeGuardState)
         { 
             case(GuardState.ResumePatrol):
             case(GuardState.ActivePatrol):
-                Debug.Log($"MovementLogic requests Brain to change to Waiting.");
+                Debug.LogWarning($"MovementLogic requests Brain to change to Waiting. \n Guard distance to target: {guardToTargetDist}");
                 attachedBrain.OnRequestStateUpdate(GuardState.Waiting);
                 break;
 
