@@ -1,5 +1,6 @@
 using System;
 using System.Collections;
+using Unity.Cinemachine;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
@@ -15,9 +16,9 @@ public class GuardMovement3 : MonoBehaviour
     GuardPlayerTrackerCoRo attachedCoRoScript;
 
     [Header("Movement Values")]
-    public float moveSpeed, searchingDuration, guardToTargetDist, patrolPauseDuration;
+    public float moveSpeed, searchingDuration, guardToTargetDist, patrolPauseDuration, distanceNormalized;
     public int currentPatrolIndex;
-    public Vector3 currentPatrolTarget, lastKnownPlayerPos, currentPlayerPos, currentGuardPos, currentTargetVector;
+    public Vector3 currentPatrolTarget, lastKnownPlayerPos, currentPlayerPos, currentGuardPos, currentTargetVector, guardPos, targetPos;
 
     [Header("Bools")]
     public bool withinRange, travellingToDestination, updatingPlayerLastKnown, doneInitializing = false, isWaiting;
@@ -38,21 +39,21 @@ public class GuardMovement3 : MonoBehaviour
     void FixedUpdate()
     {
         if(doneInitializing)
-        { 
-            currentTargetVector = new Vector3(guardNavAgent.destination.x, 0, guardNavAgent.destination.z);
-            currentGuardPos = new Vector3(guardObj.transform.position.x, 0, guardObj.transform.position.z);
-            guardToTargetDist = Mathf.Abs(Vector3.Distance(currentGuardPos, currentTargetVector));
+        {
+            guardPos = attachedBrain.transform.position;
+            targetPos = patrolPoints[currentPatrolIndex].transform.position;
+
+            guardToTargetDist = Vector3.Distance(guardPos, targetPos);
             if(guardToTargetDist < 1)
             {
-                travellingToDestination = false;
                 withinRange = true;    
             }
             else
             {
-                travellingToDestination = true;
                 withinRange = false;    
             }
         }
+        
     }
 
     public void InitializeMoveValues(float ms, float sd, float ppd)
@@ -80,7 +81,21 @@ public class GuardMovement3 : MonoBehaviour
 
     public void MovementChangeState(GuardState changingState)
     {
+        Debug.Log($"MoveScript States Pre-Update| P: {previousGuardState} | A: {activeGuardState} | N: {changingState}.");
+
+        previousGuardState = activeGuardState;
+        activeGuardState = changingState;
+
+        Debug.Log($"MoveScript States Post-Update| P: {previousGuardState} | A: {activeGuardState} | N: {changingState}.");
+
+        if(previousGuardState == GuardState.Waiting && changingState == GuardState.ActivePatrol)
+        {
+            Debug.Log("Called index iterator to get updated index for next patrol point.");
+            WaitingToAP();    
+        }
+
         currentPatrolTarget = patrolPoints[currentPatrolIndex].transform.position;
+
         switch(changingState)
         { 
             case GuardState.ResumePatrol:
@@ -90,12 +105,7 @@ public class GuardMovement3 : MonoBehaviour
  
             case GuardState.ActivePatrol:
                 isWaiting = false;
-                currentPatrolIndex++;
                 Debug.Log($"Current patrol index: {currentPatrolIndex}.");
-                if(currentPatrolIndex >= patrolPoints.Length)
-                    currentPatrolIndex = currentPatrolIndex % patrolPoints.Length;
-                Debug.Log($"Tested if within index, and did remainder operation if so. \n Target Update sent patrol point at index: {currentPatrolIndex}.");
-                currentPatrolTarget = patrolPoints[currentPatrolIndex].transform.position;
                 TargetUpdate(currentPatrolTarget);
                 break;
 
@@ -114,7 +124,8 @@ public class GuardMovement3 : MonoBehaviour
     }
     
     public void TargetUpdate(Vector3 destination)
-    { 
+    {
+        Debug.Log($"TargetUpdate called");
         guardNavAgent.SetDestination(destination);
         if(!travellingToDestination)
             StartCoroutine(HeadingToDestination());
@@ -139,20 +150,22 @@ public class GuardMovement3 : MonoBehaviour
 
     IEnumerator HeadingToDestination()
     {
+        Debug.Log($"HTD called");
         elapsedTravelTime = 0;
-        while(guardToTargetDist > 1f)
+        while((guardToTargetDist > 1f) || (!withinRange))
         { 
             travellingToDestination = true;
             elapsedTravelTime += Time.deltaTime;
             yield return null;
         }
-        if(guardToTargetDist <= 1f)
+        if((guardToTargetDist <= 1f) || (withinRange))
         {
             travellingToDestination = false;
-            if(((int)activeGuardState < 2) && isWaiting)
+            if(((int)activeGuardState < 2) && !isWaiting)
                 ArrivalLogic();
+            yield return null;
         }
-        yield return null;
+        yield break;
     }
 
     private void ArrivalLogic()
@@ -164,6 +177,7 @@ public class GuardMovement3 : MonoBehaviour
             case(GuardState.ActivePatrol):
                 Debug.LogWarning($"MovementLogic requests Brain to change to Waiting. \n Guard distance to target: {guardToTargetDist}");
                 attachedBrain.OnRequestStateUpdate(GuardState.Waiting);
+                currentPatrolIndex++;
                 break;
 
             case(GuardState.Waiting):
@@ -171,6 +185,15 @@ public class GuardMovement3 : MonoBehaviour
             case(GuardState.Pursuing):
                 Debug.Log("Oops! Unintended consequence!");
                 break;
+        }
+    }
+
+    private void WaitingToAP()
+    {
+        if(currentPatrolIndex >= patrolPoints.Length)
+        { 
+            currentPatrolIndex = currentPatrolIndex % patrolPoints.Length;
+            Debug.Log($"Tested if within index, and did remainder operation if so. \n New patrol point at index: {currentPatrolIndex}.");
         }
     }
 }

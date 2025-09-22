@@ -225,7 +225,8 @@ public class GuardBrain_3 : MonoBehaviour
     }
 
     private void ChangeScriptStates(GuardState changingState)
-    { 
+    {
+        Debug.Log($"Changing attached script states to {currentGuardState}.");
         AS_Hearing.HearingChangeState(changingState);
         AS_Move.MovementChangeState(changingState);
         AS_Vision.VisionChangeState(changingState);

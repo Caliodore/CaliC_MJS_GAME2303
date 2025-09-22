@@ -187,6 +187,7 @@ MonoBehaviour:
   m_Script: {fileID: 11500000, guid: cc6cb0c58668523408d25c89ca6b0382, type: 3}
   m_Name: 
   m_EditorClassIdentifier: 
+  debugLogsEnabled: 0
   activeGuardState: 0
 --- !u!1 &114152054
 GameObject:
@@ -1411,7 +1412,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8778885222052385859, guid: c5ddc622e2e217a46bb09f104afa9fb1, type: 3}
       propertyPath: m_LocalPosition.x
-      value: -57.130215
+      value: -50.68
       objectReference: {fileID: 0}
     - target: {fileID: 8778885222052385859, guid: c5ddc622e2e217a46bb09f104afa9fb1, type: 3}
       propertyPath: m_LocalPosition.y
@@ -1419,7 +1420,7 @@ PrefabInstance:
       objectReference: {fileID: 0}
     - target: {fileID: 8778885222052385859, guid: c5ddc622e2e217a46bb09f104afa9fb1, type: 3}
       propertyPath: m_LocalPosition.z
-      value: 15.856116
+      value: 21.74
       objectReference: {fileID: 0}
     - target: {fileID: 8778885222052385859, guid: c5ddc622e2e217a46bb09f104afa9fb1, type: 3}
       propertyPath: m_LocalRotation.w
@@ -2062,16 +2063,20 @@ MonoBehaviour:
   searchingDuration: 0
   guardToTargetDist: 0
   patrolPauseDuration: 0
+  distanceNormalized: 0
   currentPatrolIndex: 0
   currentPatrolTarget: {x: 0, y: 0, z: 0}
   lastKnownPlayerPos: {x: 0, y: 0, z: 0}
   currentPlayerPos: {x: 0, y: 0, z: 0}
   currentGuardPos: {x: 0, y: 0, z: 0}
   currentTargetVector: {x: 0, y: 0, z: 0}
+  guardPos: {x: 0, y: 0, z: 0}
+  targetPos: {x: 0, y: 0, z: 0}
   withinRange: 0
   travellingToDestination: 0
   updatingPlayerLastKnown: 0
   doneInitializing: 0
+  isWaiting: 0
   activeGuardState: 0
   previousGuardState: 0
 --- !u!1660057539 &9223372036854775807
