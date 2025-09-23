@@ -13,20 +13,23 @@ public class PlayerMovement : MonoBehaviour
     Vector3 outputMovementVector;
     Vector3 outputMovementVectorScaled;
 
-    public bool isSneaking;
-    public bool isMoving;
+    public bool isSneaking, isMoving;
     public bool playerTracking;
     public float currentPlayerSpeed;
     public bool inHearingRange;
 
     [SerializeField] Rigidbody playerRB;
     [SerializeField] GameObject pathMarkerPrefab;
+    [SerializeField] GameObject guardOverseerObj;
+    GuardOverseer guardOverseer;
 
     Coroutine coRef;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        guardOverseerObj = FindAnyObjectByType<GuardOverseer>().gameObject;
+        guardOverseer = guardOverseerObj.GetComponent<GuardOverseer>();
         isSneaking = false;
         currentPlayerSpeed = playerRunSpeed;
     }
@@ -48,6 +51,8 @@ public class PlayerMovement : MonoBehaviour
             isSneaking= false;
             currentPlayerSpeed = playerRunSpeed;
         }
+        guardOverseer.PlayerStealthStateUpdate(isSneaking);
+        guardOverseer.playerSneak?.Invoke();
     }
 
     public void OnMovement(InputAction.CallbackContext ctx)
@@ -75,24 +80,24 @@ public class PlayerMovement : MonoBehaviour
         }
     }
 
-    public void PathMaker(InputAction.CallbackContext ctx)
-    {
-        if (ctx.performed) 
-        { 
-            coRef = StartCoroutine(PathSpawner());
-        }
-        if ((ctx.interaction is HoldInteraction))
-        {
-            StopCoroutine(coRef);   
-        }
-    }
+    //public void PathMaker(InputAction.CallbackContext ctx)
+    //{
+    //    if (ctx.performed) 
+    //    { 
+    //        coRef = StartCoroutine(PathSpawner());
+    //    }
+    //    if ((ctx.interaction is HoldInteraction))
+    //    {
+    //        StopCoroutine(coRef);   
+    //    }
+    //}
 
-    IEnumerator PathSpawner()
-    {
-        while(playerTracking)
-        {
-            Instantiate(pathMarkerPrefab, transform.position, Quaternion.identity);
-            yield return new WaitForSeconds(1f);
-        }    
-    }
+    //IEnumerator PathSpawner()
+    //{
+    //    while(playerTracking)
+    //    {
+    //        Instantiate(pathMarkerPrefab, transform.position, Quaternion.identity);
+    //        yield return new WaitForSeconds(1f);
+    //    }    
+    //}
 }

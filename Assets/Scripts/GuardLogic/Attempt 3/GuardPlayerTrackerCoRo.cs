@@ -13,6 +13,7 @@ public class GuardPlayerTrackerCoRo : MonoBehaviour
     Vector3 playerCurrentPos;
 
     float guardVisionRange;
+    int guardInstanceID;
     bool seeingPlayer;
 
     private void Start()
@@ -32,11 +33,27 @@ public class GuardPlayerTrackerCoRo : MonoBehaviour
         return playerCurrentPos;
     }
 
-    public void CreateCoroScript(int guardNumber)
+    public void CreateCoroScript(int guardID)
     {
         attachedBrain = gameObject.GetComponentInParent<GuardBrain_3>();
         attachedGuardObj = attachedBrain.gameObject;
-        StartCoroutine(TrackPlayerRange(guardNumber));
+        guardInstanceID = guardID;
+        if(attachedBrain.doneInitializing)
+        {
+            StartCoroutine(TrackPlayerRange(guardID));
+        }
+        else
+            StartCoroutine(WaitingForInitialization());
+    }
+
+    IEnumerator WaitingForInitialization()
+    {
+        while(!attachedBrain.doneInitializing)
+        { 
+            yield return null;
+        }
+        CreateCoroScript(guardInstanceID);
+        yield break;    
     }
 
     IEnumerator TrackPlayerRange(int guardNumber)
@@ -50,10 +67,14 @@ public class GuardPlayerTrackerCoRo : MonoBehaviour
             if(guardPlayerDistanceVector.magnitude <= guardVisionRange)
             {
                 seeingPlayer = true;
-                attachedBrain.PlayerInRange();
                 Debug.DrawLine(guardPosition, playerCurrentPos, Color.green);
             }
-            yield return null;    
+            else
+            { 
+                seeingPlayer = false;
+            }
+            attachedBrain.PlayerRangeUpdate(seeingPlayer);
+            yield return new WaitForSeconds(attachedBrain.visualReactionTime);
         }
     }
 }

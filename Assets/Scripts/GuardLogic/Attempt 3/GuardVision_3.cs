@@ -18,7 +18,7 @@ public class GuardVision_3 : MonoBehaviour
 
     private GuardState activeGuardState;
     private int activeStateInt;
-    private bool playerHeard, playerSpotted, doneInitializing;
+    private bool playerHeard, playerSpotted, doneInitializing, playerSneaking;
 
     private Vector3 playerPosition, guardPosition, directionToPlayer;
     private Coroutine visionCheckerCoRo;
@@ -55,8 +55,7 @@ public class GuardVision_3 : MonoBehaviour
         if(activeStateInt > 2)
         {
             if((visionCheckerCoRo != null) && true)
-            StartCoroutine(VisionChecker());
-            playerHeard = true;
+                StartCoroutine(VisionChecker());
         }
     }
 
@@ -79,6 +78,7 @@ public class GuardVision_3 : MonoBehaviour
 
     IEnumerator VisionChecker()
     {
+        Debug.Log("VisionScript Coroutine running.");
         isVisionCheckRunning = true;
         while(isVisionCheckRunning)        //Firing a raycast every x seconds to determine if LoS to player.
         {
@@ -86,8 +86,10 @@ public class GuardVision_3 : MonoBehaviour
             bool raycastBool = Physics.Raycast(guardPosition, directionToPlayer, out hit, Mathf.Infinity, visionInteractionLayers);
 
             if(hit.collider.CompareTag("Player") && raycastBool)    //Raycast hit something and what it hit *is* a player.
-            { 
+            {
+                Debug.Log("Raycast hit a player. Calling Brain.PlayerSpotted().");
                 playerSpotted = true;
+                attachedBrain.PlayerSpotted(hit.transform.gameObject);
             }
             else                                                    //Either raycast failed or it wasnt a player.
             {
@@ -96,15 +98,12 @@ public class GuardVision_3 : MonoBehaviour
                 playerSpotted = false;
             }
 
-            yield return new WaitForSeconds(visualReactionTime);  
+            yield return new WaitForSeconds(visualReactionTime);
 
-            while(playerSpotted)
+            if(!playerSpotted)
             {
-                if(activeGuardState == GuardState.Investigating)
-                { 
-                    gameObject.GetComponent<GuardStateChange_3>().ChangeState(GuardState.Pursuing);    
-                }
-                yield return null;
+                isVisionCheckRunning = false; 
+                yield break;    
             }
             yield return null;
         }

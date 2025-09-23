@@ -1,6 +1,8 @@
 using System;
 using System.Collections;
+using Unity.VisualScripting;
 using UnityEngine;
+using UnityEngine.Events;
 using UnityEngine.AI;
 
 public class GuardBrain_3 : MonoBehaviour
@@ -27,25 +29,29 @@ public class GuardBrain_3 : MonoBehaviour
     public float visualRange, visualReactionTime, timeSinceLastSeen, distanceToPlayer, playerPosition;
 
     [Header("Vars for Changes")]
-    public bool stateChanged, playerInRangeGeneral, doneInitializing;
+    public bool stateChanged, playerInRangeGeneral, doneInitializing, isPlayerSneaking, reactionCoroutineRunning, toggledRange;
     public GuardState currentGuardState, desiredState;
 
     //Vars for internal references
     private Collider hearingRadiusRef;
     private GuardBrain_3 attachedBrainRef;
+    private GuardOverseer guardOverseerScript;
     private GuardPresetValues guardPresets;
     private GuardMovement3 AS_Move;
     private GuardVision_3 AS_Vision;
     private GuardHearing_3 AS_Hearing;
     private GuardStateChange_3 AS_StateChange;
     private GuardPlayerTrackerCoRo attachedCoRo;
+    private UnityAction playerSneaks;
+    public UnityEvent playerStealthToggle;
         //Coroutines
-        private Coroutine reactionCoRo;
+        private Coroutine visionCoRo, hearingCoRo;
 
 
 
     void Start()
     {
+        playerSneaks += ScriptStealthUpdate;
         StartCoroutine(EstablishInternalReferences());
     }
 
@@ -74,6 +80,7 @@ public class GuardBrain_3 : MonoBehaviour
         visionRaycastCollisionMask = LayerMask.GetMask("Player","Wall","LoS Blocker");
         guardMoveAgent = attachedGuardObject.GetComponent<NavMeshAgent>();
         guardOverseer = FindAnyObjectByType<GuardOverseer>().gameObject;
+        guardOverseerScript = guardOverseer.GetComponent<GuardOverseer>();
         playerParentObj = FindAnyObjectByType<PlayerMovement>().gameObject;
 
         guardPresets = guardOverseer.GetComponent<GuardOverseer>().AssignGuardSO();
@@ -207,21 +214,71 @@ public class GuardBrain_3 : MonoBehaviour
         AS_StateChange.ChangeState(requestedStateChange);
     }
 
-    public void PlayerInRange()
+    public void PlayerRangeUpdate(bool rangeUpdate)
+    {
+        Debug.Log($"Is player in visual radius: {rangeUpdate}");
+        playerInRangeGeneral = rangeUpdate;
+        if(playerInRangeGeneral)
+        {
+            guardOverseerScript.AddStealthListener(playerSneaks);
+        }
+        else 
+        { 
+            guardOverseerScript.RemoveStealthListener(playerSneaks);                
+        }
+    }
+
+    private void ScriptStealthUpdate()
+    {
+        bool playerSneakState = guardOverseerScript.isPlayerSneaking;
+        AS_Move.PlayerStealthUpdate(playerSneakState);
+        AS_Hearing.PlayerStealthUpdate(playerSneakState);
+    }
+
+    public void PlayerSpotted(GameObject hitObj)
+    {
+        Debug.Log($"Raycast collided with: {hitObj.tag}.");
+        if(!hitObj.CompareTag("Player"))
+        {
+            isSeeingPlayer = false;
+        }
+        else if(hitObj.gameObject.CompareTag("Player"))
+        { 
+            isSeeingPlayer = true;
+            OnRequestStateUpdate(GuardState.Pursuing);
+        }
+    }
+
+    public void PlayerAudioProximityUpdate(bool proximityStateAudio)  //Should be activated when player collides/is colliding with the hearing radius trigger, but not when actively being seen by the guard.
+    {
+        playerCurrentlyInHearingRadius = proximityStateAudio;
+        if(!isSeeingPlayer && !isPlayerSneaking)
+        { 
+            PlayerHeard();
+        }
+        if(hearingCoRo == null)
+            hearingCoRo = StartCoroutine(HearingPlayer());
+    }
+
+    IEnumerator HearingPlayer()
     { 
-        playerInRangeGeneral = true;
+        while((playerCurrentlyInHearingRadius && !isSeeingPlayer) && !isPlayerSneaking)
+        { 
+            PlayerHeard();
+            yield return new WaitForSeconds(audioReactionTime);
+        }
+        if(!playerCurrentlyInHearingRadius || isPlayerSneaking)
+        {
+            Debug.Log("Brain determined player left hearing radius or is sneaking.");
+            yield break;
+        }
+        yield return null;
     }
 
-    public void OnPlayerEntersAudioRange()  //Should be activated when player collides/is colliding with the hearing radius trigger, but not when actively being seen by the guard.
+    public void PlayerHeard()
     {
-        if(playerInRangeGeneral)
-            reactionCoRo = StartCoroutine(GuardReactsToPlayer(audioReactionTime, GuardState.Investigating));
-    }
-
-    public void OnPlayerEntersVisualRange() //Should overwrite the audio range alert functions and investigating state if player can be seen.
-    {
-        if(playerInRangeGeneral)
-            reactionCoRo = StartCoroutine(GuardReactsToPlayer(visualReactionTime, GuardState.Pursuing));
+        Debug.Log("Player was determined to still be in hearing radius, seeing if SC can update to Investigating.");
+        OnRequestStateUpdate(GuardState.Investigating);
     }
 
     private void ChangeScriptStates(GuardState changingState)
@@ -230,15 +287,5 @@ public class GuardBrain_3 : MonoBehaviour
         AS_Hearing.HearingChangeState(changingState);
         AS_Move.MovementChangeState(changingState);
         AS_Vision.VisionChangeState(changingState);
-    }
-
-    IEnumerator GuardReactsToPlayer(float reactionType, GuardState stateToChangeTo)
-    {
-        Debug.Log("GuardBrain begins reaction.");
-        yield return new WaitForSeconds(reactionType);
-        //Need to add a call to vision raycast function here before submitting StateChange.
-        Debug.Log($"GuardBrain tells StateChange to change to: {stateToChangeTo}");
-        AS_StateChange.ChangeState(stateToChangeTo);
-        yield break;
     }
 }

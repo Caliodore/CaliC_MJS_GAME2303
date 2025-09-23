@@ -1,7 +1,9 @@
+using System;
 using System.Collections;
 using System.Collections.Generic;
 using UnityEditor.VersionControl;
 using UnityEngine;
+using UnityEngine.Events;
 
 public class GuardOverseer : MonoBehaviour
 {
@@ -16,19 +18,16 @@ public class GuardOverseer : MonoBehaviour
     [Header("Player-Related Vars")]
     public Vector3 playerCurrentPos;
     public float guardVisionRange;
+    public bool isPlayerSneaking;
+    public UnityEvent playerSneak;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
+        playerSneak = new UnityEvent();
         playerObj = FindAnyObjectByType<PlayerMovement>().gameObject;
         InitializePresetValues();
         InitializeGuardArray();
-    }
-
-    // Update is called once per frame
-    void Update()
-    {
-        
     }
 
     private void FixedUpdate()
@@ -44,6 +43,26 @@ public class GuardOverseer : MonoBehaviour
     public GuardPresetValues AssignGuardSO()
     { 
         return guardPresetValues;    
+    }
+
+    /// <summary>
+    /// To be called by the player to tell whether or not they're sneaking at any moment. This is so the guard overseer can update the guards as needed on whether they can sense the player.
+    /// </summary>
+    /// <param name="playerSneaking"></param>
+    public bool PlayerStealthStateUpdate(bool playerStealthState)
+    { 
+        isPlayerSneaking = playerStealthState;
+        return isPlayerSneaking;
+    }
+
+    public void AddStealthListener(UnityAction listener)
+    { 
+        playerSneak.AddListener(listener);
+    }
+
+    public void RemoveStealthListener(UnityAction listener)
+    { 
+        playerSneak.RemoveListener(listener);
     }
 
     public void InitializeGuardArray()

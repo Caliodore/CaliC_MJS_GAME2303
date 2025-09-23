@@ -1,9 +1,12 @@
 using System;
 using System.Collections;
+using System.Collections.Generic;
 using Unity.Cinemachine;
 using Unity.VisualScripting;
 using UnityEngine;
 using UnityEngine.AI;
+using UnityEngine.Events;
+using UnityEngine.Rendering;
 
 public class GuardMovement3 : MonoBehaviour
 {
@@ -21,18 +24,20 @@ public class GuardMovement3 : MonoBehaviour
     public Vector3 currentPatrolTarget, lastKnownPlayerPos, currentPlayerPos, currentGuardPos, currentTargetVector, guardPos, targetPos;
 
     [Header("Bools")]
-    public bool withinRange, travellingToDestination, updatingPlayerLastKnown, doneInitializing = false, isWaiting;
+    public bool withinRange, htdRunning, updatingPlayerLastKnown, doneInitializing = false, isWaiting;
 
     public GuardState activeGuardState;
     public GuardState previousGuardState;
     private float visualReactTime, audioReactTime, reactionTime, elapsedTravelTime;
     private int activeStateInt;
     private int previousStateInt;
+    private bool playerSneaking, playerInRange;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
     {
         currentPatrolIndex = 0;
+        playerInRange = false;
     }
 
     // Update is called once per frame
@@ -41,12 +46,12 @@ public class GuardMovement3 : MonoBehaviour
         if(doneInitializing)
         {
             guardPos = attachedBrain.transform.position;
-            targetPos = patrolPoints[currentPatrolIndex].transform.position;
+            //targetPos = patrolPoints[currentPatrolIndex].transform.position;
 
             guardToTargetDist = Vector3.Distance(guardPos, targetPos);
             if(guardToTargetDist < 1)
             {
-                withinRange = true;    
+                withinRange = true;
             }
             else
             {
@@ -76,6 +81,10 @@ public class GuardMovement3 : MonoBehaviour
         audioReactTime = attachedBrain.audioReactionTime;
         currentTargetVector = guardNavAgent.destination;
         currentGuardPos = guardObj.transform.position;
+        guardPos = attachedBrain.transform.position;
+        patrolPoints = attachedBrain.patrolPointArray;
+        targetPos = patrolPoints[currentPatrolIndex].transform.position;
+
         guardToTargetDist = Mathf.Abs(Vector3.Distance(currentGuardPos, currentTargetVector));
     }
 
@@ -127,8 +136,13 @@ public class GuardMovement3 : MonoBehaviour
     {
         Debug.Log($"TargetUpdate called");
         guardNavAgent.SetDestination(destination);
-        if(!travellingToDestination)
-            StartCoroutine(HeadingToDestination());
+        targetPos = destination;
+        StartCoroutine(HeadingToDestination());
+    }
+
+    public void PlayerStealthUpdate(bool isPlayerSneaking)
+    { 
+        playerSneaking = isPlayerSneaking;
     }
 
     IEnumerator PlayerTargetUpdates()
@@ -138,12 +152,20 @@ public class GuardMovement3 : MonoBehaviour
             lastKnownPlayerPos = attachedCoRoScript.SendPlayerPosition();
             TargetUpdate(lastKnownPlayerPos);
             yield return new WaitForSeconds(audioReactTime);
+            if(playerSneaking || !playerInRange)
+            {
+                yield break;
+            }
         }
         while(activeGuardState == GuardState.Pursuing)
         { 
             lastKnownPlayerPos = attachedCoRoScript.SendPlayerPosition();
             TargetUpdate(lastKnownPlayerPos);
             yield return new WaitForSeconds(visualReactTime);
+            if(!playerInRange)
+            {
+                yield break;
+            }
         }
         yield return null;    
     }
@@ -151,20 +173,21 @@ public class GuardMovement3 : MonoBehaviour
     IEnumerator HeadingToDestination()
     {
         Debug.Log($"HTD called");
+        htdRunning = true;
         elapsedTravelTime = 0;
         while((guardToTargetDist > 1f) || (!withinRange))
-        { 
-            travellingToDestination = true;
+        {
             elapsedTravelTime += Time.deltaTime;
             yield return null;
         }
         if((guardToTargetDist <= 1f) || (withinRange))
         {
-            travellingToDestination = false;
-            if(((int)activeGuardState < 2) && !isWaiting)
+            if(!isWaiting)
                 ArrivalLogic();
             yield return null;
         }
+        Debug.Log("HTD yield break.");
+        htdRunning = false;
         yield break;
     }
 
@@ -181,9 +204,11 @@ public class GuardMovement3 : MonoBehaviour
                 break;
 
             case(GuardState.Waiting):
+                Debug.Log("Oops! Unintended consequence!");
+                break;
             case(GuardState.Investigating):
             case(GuardState.Pursuing):
-                Debug.Log("Oops! Unintended consequence!");
+                attachedBrain.OnRequestStateUpdate(GuardState.ResumePatrol);
                 break;
         }
     }

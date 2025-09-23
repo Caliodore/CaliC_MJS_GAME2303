@@ -1,4 +1,5 @@
 using UnityEngine;
+using UnityEngine.Events;
 
 public class GuardHearing_3 : MonoBehaviour
 {   
@@ -8,7 +9,7 @@ public class GuardHearing_3 : MonoBehaviour
     [SerializeField] GameObject playerObj;
     [SerializeField] Collider guardHearingRadius;
 
-    private bool doneInitializing;
+    private bool doneInitializing, playerSneaking;
     private float audioReactionTime;
     private GuardState activeGuardState;
 
@@ -28,8 +29,21 @@ public class GuardHearing_3 : MonoBehaviour
     {
         if(other.CompareTag("Player"))
         { 
-            attachedBrain.OnPlayerEntersAudioRange();
+            attachedBrain.PlayerAudioProximityUpdate(true);
         }
+    }
+
+    private void OnTriggerExit(Collider other)
+    {
+        if(other.CompareTag("Player"))
+        { 
+            attachedBrain.PlayerAudioProximityUpdate(false);
+        }
+    }
+
+    public void PlayerStealthUpdate(bool isPlayerSneaking)
+    { 
+        playerSneaking = isPlayerSneaking;
     }
 
     public void InitializeHearingValues(float art)
