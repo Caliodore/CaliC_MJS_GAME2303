@@ -32,6 +32,7 @@ public class GuardMovement3 : MonoBehaviour
     private int activeStateInt;
     private int previousStateInt;
     private bool playerSneaking, playerInRange;
+    private Coroutine htdCoRo;
 
     // Start is called once before the first execution of Update after the MonoBehaviour is created
     void Start()
@@ -80,26 +81,24 @@ public class GuardMovement3 : MonoBehaviour
         visualReactTime = attachedBrain.visualReactionTime;
         audioReactTime = attachedBrain.audioReactionTime;
         currentTargetVector = guardNavAgent.destination;
-        currentGuardPos = guardObj.transform.position;
         guardPos = attachedBrain.transform.position;
         patrolPoints = attachedBrain.patrolPointArray;
         targetPos = patrolPoints[currentPatrolIndex].transform.position;
 
-        guardToTargetDist = Mathf.Abs(Vector3.Distance(currentGuardPos, currentTargetVector));
+        //guardToTargetDist = Mathf.Abs(Vector3.Distance(currentGuardPos, currentTargetVector));
     }
 
     public void MovementChangeState(GuardState changingState)
     {
-        Debug.Log($"MoveScript States Pre-Update| P: {previousGuardState} | A: {activeGuardState} | N: {changingState}.");
+        //Debug.Log($"MoveScript States Pre-Update| P: {previousGuardState} | A: {activeGuardState} | N: {changingState}.");
 
         previousGuardState = activeGuardState;
-        activeGuardState = changingState;
 
-        Debug.Log($"MoveScript States Post-Update| P: {previousGuardState} | A: {activeGuardState} | N: {changingState}.");
+        //Debug.Log($"MoveScript States Post-Update| P: {previousGuardState} | A: {activeGuardState} | N: {changingState}.");
 
         if(previousGuardState == GuardState.Waiting && changingState == GuardState.ActivePatrol)
         {
-            Debug.Log("Called index iterator to get updated index for next patrol point.");
+            //Debug.Log("Called index iterator to get updated index for next patrol point.");
             WaitingToAP();    
         }
 
@@ -130,6 +129,8 @@ public class GuardMovement3 : MonoBehaviour
                 break;
     
         }
+
+        activeGuardState = changingState;
     }
     
     public void TargetUpdate(Vector3 destination)
@@ -137,7 +138,7 @@ public class GuardMovement3 : MonoBehaviour
         Debug.Log($"TargetUpdate called");
         guardNavAgent.SetDestination(destination);
         targetPos = destination;
-        StartCoroutine(HeadingToDestination());
+        htdCoRo = StartCoroutine(HeadingToDestination());
     }
 
     public void PlayerStealthUpdate(bool isPlayerSneaking)
@@ -174,37 +175,43 @@ public class GuardMovement3 : MonoBehaviour
     {
         Debug.Log($"HTD called");
         htdRunning = true;
-        elapsedTravelTime = 0;
-        while((guardToTargetDist > 1f) || (!withinRange))
-        {
-            elapsedTravelTime += Time.deltaTime;
-            yield return null;
-        }
-        if((guardToTargetDist <= 1f) || (withinRange))
-        {
-            if(!isWaiting)
-                ArrivalLogic();
-            yield return null;
-        }
+        yield return StartCoroutine(WaitingTillArrival());
         Debug.Log("HTD yield break.");
         htdRunning = false;
         yield break;
     }
 
+    IEnumerator WaitingTillArrival()
+    { 
+        Debug.Log("WaitingTillArrival called");
+        while(!withinRange)
+        {
+            isWaiting = false;
+            yield return null;
+        }
+        if(withinRange)
+        {
+            if(!isWaiting)
+                ArrivalLogic();
+            yield break;
+        }
+        yield return null;
+    }
+
     private void ArrivalLogic()
     {
-        Debug.Log($"Arrived at location, asking Brain to change state from {activeGuardState} to Waiting.");
+        //Debug.Log($"Arrived at location, asking Brain to change state from {activeGuardState} to Waiting.");
         switch(activeGuardState)
         { 
             case(GuardState.ResumePatrol):
             case(GuardState.ActivePatrol):
-                Debug.LogWarning($"MovementLogic requests Brain to change to Waiting. \n Guard distance to target: {guardToTargetDist}");
+                //Debug.LogWarning($"MovementLogic requests Brain to change to Waiting. \n Guard distance to target: {guardToTargetDist}");
                 attachedBrain.OnRequestStateUpdate(GuardState.Waiting);
                 currentPatrolIndex++;
                 break;
 
             case(GuardState.Waiting):
-                Debug.Log("Oops! Unintended consequence!");
+                //Debug.Log("Oops! Unintended consequence!");
                 break;
             case(GuardState.Investigating):
             case(GuardState.Pursuing):

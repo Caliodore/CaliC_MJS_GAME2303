@@ -37,9 +37,10 @@ public class GuardBrain_3 : MonoBehaviour
     private GuardBrain_3 attachedBrainRef;
     private GuardOverseer guardOverseerScript;
     private GuardPresetValues guardPresets;
-    private GuardMovement3 AS_Move;
-    private GuardVision_3 AS_Vision;
-    private GuardHearing_3 AS_Hearing;
+    private GuardMovement4 AS_Move;
+    //private GuardVision_3 AS_Vision;
+    //private GuardHearing_3 AS_Hearing;
+    private GuardSenses4 AS_Senses;
     private GuardStateChange_3 AS_StateChange;
     private GuardPlayerTrackerCoRo attachedCoRo;
     private UnityAction playerSneaks;
@@ -53,11 +54,6 @@ public class GuardBrain_3 : MonoBehaviour
     {
         playerSneaks += ScriptStealthUpdate;
         StartCoroutine(EstablishInternalReferences());
-    }
-
-    void Update()
-    {
-        
     }
 
     private void FixedUpdate()
@@ -76,8 +72,8 @@ public class GuardBrain_3 : MonoBehaviour
         attachedGuardObject = GetComponent<GuardBrain_3>().gameObject;
         attachedCoRo = this.gameObject.GetComponentInChildren<GuardPlayerTrackerCoRo>();
         attachedBrainRef = attachedGuardObject.GetComponent<GuardBrain_3>();
-        hearingRadiusRef = attachedGuardObject.GetComponentInChildren<GuardHearing_3>().gameObject.GetComponent<Collider>();
-        visionRaycastCollisionMask = LayerMask.GetMask("Player","Wall","LoS Blocker");
+        hearingRadiusRef = attachedGuardObject.GetComponentInChildren<GuardSenses4>().gameObject.GetComponent<Collider>();
+        visionRaycastCollisionMask = LayerMask.GetMask("Player","Wall","RaycastTest");
         guardMoveAgent = attachedGuardObject.GetComponent<NavMeshAgent>();
         guardOverseer = FindAnyObjectByType<GuardOverseer>().gameObject;
         guardOverseerScript = guardOverseer.GetComponent<GuardOverseer>();
@@ -86,9 +82,8 @@ public class GuardBrain_3 : MonoBehaviour
         guardPresets = guardOverseer.GetComponent<GuardOverseer>().AssignGuardSO();
 
         //Making sure it's referencing the individual parent object of all aspects of the guard prefab for getting various components.
-        AS_Move = attachedGuardObject.GetComponentInChildren<GuardMovement3>();
-        AS_Hearing = attachedGuardObject.GetComponentInChildren<GuardHearing_3>();
-        AS_Vision = attachedGuardObject.GetComponentInChildren<GuardVision_3>();
+        AS_Move = attachedGuardObject.GetComponentInChildren<GuardMovement4>();
+        AS_Senses = attachedGuardObject.GetComponentInChildren<GuardSenses4>();
         AS_StateChange = attachedGuardObject.GetComponentInChildren<GuardStateChange_3>();
 
         //Debug.Log("Finished establishing internal references.");
@@ -134,8 +129,9 @@ public class GuardBrain_3 : MonoBehaviour
     private void AssignReferences()
     { 
         AS_Move.AssignMoveRefs(attachedGuardObject, playerParentObj, guardMoveAgent, attachedBrainRef, attachedCoRo);
-        AS_Hearing.AssignHearingRefs(attachedGuardObject, playerParentObj, hearingRadiusRef, attachedBrainRef);
-        AS_Vision.AssignVisionRefs(attachedGuardObject, guardOverseer, playerParentObj, visionRaycastCollisionMask, attachedBrainRef);
+        AS_Senses.AssignSenseRefs(attachedGuardObject, playerParentObj, hearingRadiusRef, attachedBrainRef, visionRaycastCollisionMask, guardOverseer);
+        //AS_Hearing.AssignHearingRefs(attachedGuardObject, playerParentObj, hearingRadiusRef, attachedBrainRef);
+        //AS_Vision.AssignVisionRefs(attachedGuardObject, guardOverseer, playerParentObj, visionRaycastCollisionMask, attachedBrainRef);
         AS_StateChange.AssignStateRefs(attachedGuardObject, attachedBrainRef);
         //Debug.Log("Finished assigning component references.");
     }
@@ -187,8 +183,7 @@ public class GuardBrain_3 : MonoBehaviour
     private void AssignScriptPresets()
     {
         AS_Move.InitializeMoveValues(moveSpeed, timeToSearchForPlayer, patrolPauseDuration);
-        AS_Vision.InitializeVisionValues(visualRange, visualReactionTime);
-        AS_Hearing.InitializeHearingValues(audioReactionTime);
+        AS_Senses.InitializeSenseValues(visualRange, visualReactionTime);
         AS_StateChange.InitializeStateValues(currentGuardState, patrolPauseDuration);
         //Debug.Log("Established secondary script presets.");
     }
@@ -231,8 +226,9 @@ public class GuardBrain_3 : MonoBehaviour
     private void ScriptStealthUpdate()
     {
         bool playerSneakState = guardOverseerScript.isPlayerSneaking;
-        AS_Move.PlayerStealthUpdate(playerSneakState);
-        AS_Hearing.PlayerStealthUpdate(playerSneakState);
+        AS_Senses.PlayerStealthUpdate(playerSneakState);
+        //AS_Move.PlayerStealthUpdate(playerSneakState);
+        //AS_Hearing.PlayerStealthUpdate(playerSneakState);
     }
 
     public void PlayerSpotted(GameObject hitObj)
@@ -256,8 +252,7 @@ public class GuardBrain_3 : MonoBehaviour
         { 
             PlayerHeard();
         }
-        if(hearingCoRo == null)
-            hearingCoRo = StartCoroutine(HearingPlayer());
+        hearingCoRo = StartCoroutine(HearingPlayer());
     }
 
     IEnumerator HearingPlayer()
@@ -284,8 +279,9 @@ public class GuardBrain_3 : MonoBehaviour
     private void ChangeScriptStates(GuardState changingState)
     {
         Debug.Log($"Changing attached script states to {currentGuardState}.");
-        AS_Hearing.HearingChangeState(changingState);
         AS_Move.MovementChangeState(changingState);
-        AS_Vision.VisionChangeState(changingState);
+        AS_Senses.SensesChangeState(changingState);
+        //AS_Hearing.HearingChangeState(changingState);
+        //AS_Vision.VisionChangeState(changingState);
     }
 }

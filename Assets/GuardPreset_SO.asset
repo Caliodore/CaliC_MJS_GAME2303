@@ -13,7 +13,7 @@ MonoBehaviour:
   m_Name: GuardPreset_SO
   m_EditorClassIdentifier: 
   visionRange: 10
-  movementSpeed: 4
+  movementSpeed: 8
   searchingDuration: 5
   patrolPauseDuration: 2
   visualReactionTime: 2
